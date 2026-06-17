@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Demo - Asistente IA Finanzas</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  :root {
+    --bg-app: #0A0F1E;
+    --bg-card: #131B2E;
+    --accent: #00C896;
+    --text-main: #FFFFFF;
+    --text-muted: #8F9BBA;
+    --danger: #FF475D;
+    --border: #1F2A44;
+  }
+
+  /* Reset y preparación del viewport para móviles */
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Evitamos el scroll a nivel de body */
+    background-color: var(--bg-app);
+    color: var(--text-main);
+    font-family: 'Inter', sans-serif;
+  }
+
+  .app-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* --- Header --- */
+  .app-header {
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(10, 15, 30, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    z-index: 10;
+  }
+
+  .header-title { font-weight: 600; font-size: 1.2rem; }
+  
+  .bell-btn {
+    background: none;
+    border: none;
+    color: var(--text-main);
+    position: relative;
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 5px;
+  }
+  .bell-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 8px;
+    height: 8px;
+    background: var(--danger);
+    border-radius: 50%;
+  }
+
+  /* --- Content Area --- */
+  .content-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    /* Dejamos un espacio grande al final para que la barra flotante no tape el contenido */
+    padding-bottom: 120px; 
+  }
+  
+  .content-area::-webkit-scrollbar { display: none; }
+  .content-area { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .screen { display: none; animation: fadeEffect 0.3s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeEffect { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* --- UI Components --- */
+  .card {
+    background: var(--bg-card);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 15px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  }
+
+  .title-sm { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; font-weight: 600; }
+
+  .balance-main { font-size: 2.8rem; font-weight: 700; margin: 5px 0 20px; }
+  .balance-main span { color: var(--accent); font-size: 1.5rem; vertical-align: top; margin-right: 4px;}
+
+  .row-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+  .row-item:last-child { margin-bottom: 0; }
+  .item-info p { margin: 0; font-weight: 500; font-size: 1rem; }
+  .item-info span { font-size: 0.85rem; color: var(--text-muted); display: block; margin-top: 4px;}
+  .item-value { font-weight: 600; font-size: 1.05rem;}
+  .val-pos { color: var(--accent); }
+  .val-neg { color: var(--text-main); }
+
+  .progress-container { width: 100%; height: 8px; background: var(--bg-app); border-radius: 10px; margin-top: 10px; overflow: hidden; }
+  .progress-bar { height: 100%; background: var(--accent); border-radius: 10px; }
+  .progress-bar.warning { background: var(--danger); }
+
+  /* Chat IA */
+  .chat-container { display: flex; flex-direction: column; gap: 15px; max-width: 800px; margin: 0 auto;}
+  .bubble { max-width: 80%; padding: 15px 20px; border-radius: 18px; font-size: 1rem; line-height: 1.5; }
+  .bubble.ia { background: var(--bg-card); align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid var(--accent); }
+  .bubble.user { background: var(--accent); color: #000; align-self: flex-end; border-bottom-right-radius: 4px; font-weight: 500;}
+
+  /* OCR */
+  .camera-view {
+    height: 40vh;
+    min-height: 300px;
+    background: #000 url('https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80') center/cover;
+    border-radius: 20px;
+    position: relative;
+    border: 2px dashed var(--accent);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .scan-line { width: 100%; height: 2px; background: var(--accent); box-shadow: 0 0 15px var(--accent); position: absolute; animation: scan 2s infinite linear; }
+  @keyframes scan { 0% { top: 10%; } 50% { top: 90%; } 100% { top: 10%; } }
+  .btn-scan { background: var(--accent); color: #000; border: none; padding: 18px 30px; border-radius: 30px; font-weight: 700; font-size: 1rem; width: 100%; margin-top: 20px; cursor: pointer; transition: 0.2s;}
+  .btn-scan:hover { transform: scale(1.02); }
+
+  /* --- Bottom Navigation (Solución Fija) --- */
+  .tab-bar {
+    position: fixed; /* Esto ancla la barra al borde inferior del navegador, ignorando el flexbox */
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: rgba(19, 27, 46, 0.98);
+    backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    border-top: 1px solid var(--border);
+    box-sizing: border-box;
+    padding-bottom: env(safe-area-inset-bottom, 10px); /* Margen para pantallas modernas o un mínimo de 10px */
+    z-index: 100;
+  }
+  .tab-item { color: var(--text-muted); text-align: center; cursor: pointer; font-size: 0.8rem; font-weight: 500; transition: 0.2s; flex: 1;}
+  .tab-item.active { color: var(--accent); }
+  .tab-icon { font-size: 1.3rem; display: block; margin-bottom: 6px; }
+  .tab-item.ocr-btn .tab-icon { 
+    font-size: 1.5rem; 
+    transform: translateY(-15px); 
+    background: var(--accent); 
+    color: #000; 
+    border-radius: 50%; 
+    width: 60px; 
+    height: 60px; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    box-shadow: 0 5px 20px rgba(0, 200, 150, 0.4); 
+    margin: 0 auto;
+  }
+
+  /* Ajuste Desktop */
+  @media (min-width: 768px) {
+    .content-area { padding: 40px; padding-bottom: 120px; }
+    .card { max-width: 800px; margin: 0 auto 20px; }
+    .title-sm { max-width: 800px; margin: 0 auto 15px; }
+    .balance-main { max-width: 800px; margin: 5px auto 30px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-container">
+
+  <header class="app-header">
+    <div class="header-title" id="header-title">Inicio</div>
+    <button class="bell-btn" onclick="navTo('alertas', 'Alertas y Presupuestos')">
+      <i class="fa-solid fa-bell"></i>
+      <div class="bell-badge"></div>
+    </button>
+  </header>
+
+  <div class="content-area">
+    
+    <div id="screen-dash" class="screen active">
+      <div class="title-sm">Patrimonio Total</div>
+      <div class="balance-main"><span>$</span>1.450.200</div>
+      
+      <div class="card">
+        <div class="title-sm">Cuentas Conectadas</div>
+        <div class="row-item">
+          <div class="item-info"><p>Mercado Pago</p><span>CVU •••• 4582</span></div>
+          <div class="item-value val-pos">$ 350.200</div>
+        </div>
+        <div class="row-item">
+          <div class="item-info"><p>Banco Galicia</p><span>CBU •••• 1104</span></div>
+          <div class="item-value val-pos">$ 1.100.000</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="title-sm">Últimos Consumos</div>
+        <div class="row-item">
+          <div class="item-info"><p>Supermercado Coto</p><span>Captura OCR • Alimentos</span></div>
+          <div class="item-value val-neg">-$ 45.000</div>
+        </div>
+        <div class="row-item">
+          <div class="item-info"><p>Netflix</p><span>Tarjeta Débito • Suscripciones</span></div>
+          <div class="item-value val-neg">-$ 8.500</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="screen-gastos" class="screen">
+      <div class="card">
+        <div class="title-sm">Gasto Mensual</div>
+        <div class="balance-main" style="font-size: 2.2rem;"><span>$</span>284.500</div>
+        
+        <div class="row-item" style="margin-top: 30px;">
+          <div class="item-info"><p>Vivienda y Servicios</p></div>
+          <div class="item-value">45%</div>
+        </div>
+        <div class="progress-container"><div class="progress-bar" style="width: 45%;"></div></div>
+
+        <div class="row-item" style="margin-top: 20px;">
+          <div class="item-info"><p>Alimentos (Supermercado)</p></div>
+          <div class="item-value">30%</div>
+        </div>
+        <div class="progress-container"><div class="progress-bar" style="width: 30%;"></div></div>
+        
+        <div class="row-item" style="margin-top: 20px;">
+          <div class="item-info"><p>Lujos y Salidas</p></div>
+          <div class="item-value">25%</div>
+        </div>
+        <div class="progress-container"><div class="progress-bar warning" style="width: 80%;"></div></div>
+      </div>
+    </div>
+
+    <div id="screen-alertas" class="screen">
+      <div class="card" style="border-left: 4px solid var(--danger);">
+        <div class="row-item">
+          <div class="item-info"><p style="color: var(--danger); font-weight: 600;">¡Alerta de Presupuesto!</p><span>Categoría: Lujos y Salidas</span></div>
+        </div>
+        <p style="font-size: 0.95rem; color: var(--text-muted); margin-top: 10px; line-height: 1.5;">Consumiste el 80% del presupuesto asignado para este mes ($80.000 de $100.000).</p>
+      </div>
+
+      <div class="card" style="border-left: 4px solid #F59E0B;">
+        <div class="row-item">
+          <div class="item-info"><p style="color: #F59E0B; font-weight: 600;">Vencimiento Próximo</p><span>Tarjeta Visa Galicia</span></div>
+        </div>
+        <p style="font-size: 0.95rem; color: var(--text-muted); margin-top: 10px; line-height: 1.5;">Cierre: 25 del corriente. Pago estimado: $145.000.</p>
+      </div>
+    </div>
+
+    <div id="screen-inversiones" class="screen">
+      <div class="card">
+        <div class="title-sm">Contexto Macro ARG</div>
+        <div class="row-item">
+          <div class="item-info"><p>Dólar MEP</p></div>
+          <div class="item-value">$ 1.050,00</div>
+        </div>
+        <div class="row-item">
+          <div class="item-info"><p>Inflación Estimada (Mes)</p></div>
+          <div class="item-value warning">8.5%</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="title-sm">Opciones Recomendadas (IA)</div>
+        <div class="row-item">
+          <div class="item-info"><p>FCI Money Market</p><span>Rendimiento Anualizado</span></div>
+          <div class="item-value val-pos">72% TNA</div>
+        </div>
+        <button class="btn-scan" style="margin-top: 15px;">Simular Inversión con IA</button>
+      </div>
+    </div>
+
+    <div id="screen-chat" class="screen">
+      <div class="chat-container">
+        <div class="bubble ia">Hola, analicé tus cuentas. Tenés $350.200 líquidos en Mercado Pago. Frente a la inflación proyectada del 8.5%, te sugiero mover al menos $200.000 a un FCI o comprar Dólar MEP a $1.050. ¿Querés que simule el rendimiento?</div>
+        <div class="bubble user">Simulá el MEP a 3 meses.</div>
+        <div class="bubble ia">Calculando variables... (Agente Cuantitativo procesando) <i class="fa-solid fa-chart-line" style="margin-left: 5px;"></i></div>
+      </div>
+    </div>
+
+    <div id="screen-ocr" class="screen">
+      <div class="title-sm" style="max-width: 800px; margin: 0 auto 15px;">Escanear Ticket de Compra</div>
+      <div class="camera-view" style="max-width: 800px; margin: 0 auto;">
+        <div class="scan-line"></div>
+      </div>
+      <div style="max-width: 800px; margin: 0 auto;">
+        <button class="btn-scan" onclick="navTo('dash', 'Inicio')">Procesar Gastos</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item active" onclick="navTo('dash', 'Inicio', this)">
+      <i class="fa-solid fa-chart-simple tab-icon"></i>
+      Inicio
+    </div>
+    <div class="tab-item" onclick="navTo('gastos', 'Análisis', this)">
+      <i class="fa-solid fa-credit-card tab-icon"></i>
+      Gastos
+    </div>
+    <div class="tab-item ocr-btn" onclick="navTo('ocr', 'Escanear', this)">
+      <i class="fa-solid fa-camera tab-icon"></i>
+    </div>
+    <div class="tab-item" onclick="navTo('inversiones', 'Mercado', this)">
+      <i class="fa-solid fa-arrow-trend-up tab-icon"></i>
+      Invertir
+    </div>
+    <div class="tab-item" onclick="navTo('chat', 'Asistente IA', this)">
+      <i class="fa-solid fa-robot tab-icon"></i>
+      Chat IA
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function navTo(screenId, title, element = null) {
+    document.getElementById('header-title').innerText = title;
+
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    
+    document.getElementById('screen-' + screenId).classList.add('active');
+
+    if (element) {
+      document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+      element.classList.add('active');
+    } else {
+      document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+    }
+  }
+</script>
+</body>
+</html>
